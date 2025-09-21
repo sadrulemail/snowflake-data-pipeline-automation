@@ -54,4 +54,3 @@ Code Blocks: SQL code snippets are provided for each procedure, complete with a 
 
 Dynamic Visualizations: The final "Analyze & Visualize" step features a tabbed interface with five different business insights, each represented by a chart or a table.
 
-Responsive Design: The entire application is built with a mobile-first approach using Tailwind CSS to ensure it looks and works well on any device.
