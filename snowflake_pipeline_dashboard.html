@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Snowflake Data Pipeline</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutral (Beige, Slate, Sky Blue) -->
+    <!-- Application Structure Plan: A vertical stepper navigation on the left controls a content panel on the right. This structure logically guides the user through the 5-step data pipeline. The final step, "Analyze & Visualize," uses sub-tabs to present 5 different business intelligence queries, each with an interactive chart. This transforms the static infographic into an engaging, explorable application that clearly demonstrates the pipeline's end-to-end value. -->
+    <!-- Visualization & Content Choices: 
+        - Pipeline Steps -> Goal: Explain -> Method: Styled text & code blocks with copy-to-clipboard functionality. Interaction: Vertical stepper navigation. Justification: Provides a clear, sequential flow mirroring the data journey.
+        - Sales by Country -> Goal: Compare geographical performance -> Viz: Bar Chart. Interaction: Hover tooltips for exact values. Justification: Easy comparison of total sales across different countries. Library: Chart.js.
+        - Low Inventory -> Goal: Organize & Inform on stock levels -> Viz: Styled HTML Table. Interaction: Visual cues for low stock. Justification: Best for displaying multiple specific data points (product, qty, threshold) per item clearly. Library: HTML/Tailwind CSS.
+        - Monthly Sales Trend -> Goal: Show change over time -> Viz: Line Chart. Interaction: Hover tooltips showing sales and moving average. Justification: Ideal for visualizing time-series data and identifying trends. Library: Chart.js.
+        - Top Customers -> Goal: Compare & Rank customer value -> Viz: Horizontal Bar Chart. Interaction: Hover tooltips for precise spending. Justification: Provides a clear and immediate ranking of top performers. Library: Chart.js.
+        - Sales by Category -> Goal: Compare categorical performance -> Viz: Grouped Bar Chart. Interaction: Hover tooltips, clickable legend to filter categories. Justification: Effectively compares category performance side-by-side. Library: Chart.js. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f7f4;
+            color: #334155;
+        }
+        .code-block {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: monospace;
+            white-space: pre-wrap;
+            position: relative;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: #475569;
+            color: #e2e8f0;
+            border: none;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+        .copy-btn:hover {
+            background-color: #64748b;
+        }
+        .stepper-item.active {
+            background-color: #e0e7ff;
+            color: #3730a3;
+            border-left-color: #4f46e5;
+        }
+        .stepper-item {
+            border-left-width: 4px;
+            border-color: transparent;
+        }
+        .analysis-tab.active {
+            background-color: #3730a3;
+            color: white;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 400px;
+            max-height: 50vh;
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-bold text-slate-800">Snowflake Data Pipeline Automation</h1>
+            <p class="mt-2 text-lg text-slate-600">An interactive guide to setting up, synchronizing, and analyzing data from AWS S3 using Iceberg tables and Snowflake.</p>
+        </header>
+
+        <div class="flex flex-col md:flex-row gap-8">
+            <!-- Stepper Navigation -->
+            <aside class="w-full md:w-1/4">
+                <nav id="pipeline-stepper" class="space-y-2">
+                    <a href="#step-0" class="stepper-item group flex items-center p-3 rounded-md transition-colors duration-200 cursor-pointer active">
+                        <span class="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-500 text-white flex items-center justify-center font-bold mr-4 group-[.active]:bg-indigo-600">0</span>
+                        <span class="font-medium group-[.active]:font-semibold">Source Data</span>
+                    </a>
+                    <a href="#step-1" class="stepper-item group flex items-center p-3 rounded-md transition-colors duration-200 cursor-pointer">
+                        <span class="flex-shrink-0 w-8 h-8 rounded-full bg-slate-400 text-white flex items-center justify-center font-bold mr-4 group-[.active]:bg-indigo-600">1</span>
+                        <span class="font-medium group-[.active]:font-semibold">Create Iceberg Tables</span>
+                    </a>
+                    <a href="#step-2" class="stepper-item group flex items-center p-3 rounded-md transition-colors duration-200 cursor-pointer">
+                        <span class="flex-shrink-0 w-8 h-8 rounded-full bg-slate-400 text-white flex items-center justify-center font-bold mr-4 group-[.active]:bg-indigo-600">2</span>
+                        <span class="font-medium group-[.active]:font-semibold">Refresh Iceberg Tables</span>
+                    </a>
+                    <a href="#step-3" class="stepper-item group flex items-center p-3 rounded-md transition-colors duration-200 cursor-pointer">
+                        <span class="flex-shrink-0 w-8 h-8 rounded-full bg-slate-400 text-white flex items-center justify-center font-bold mr-4 group-[.active]:bg-indigo-600">3</span>
+                        <span class="font-medium group-[.active]:font-semibold">Load to Native Tables</span>
+                    </a>
+                    <a href="#step-4" class="stepper-item group flex items-center p-3 rounded-md transition-colors duration-200 cursor-pointer">
+                        <span class="flex-shrink-0 w-8 h-8 rounded-full bg-slate-400 text-white flex items-center justify-center font-bold mr-4 group-[.active]:bg-indigo-600">4</span>
+                        <span class="font-medium group-[.active]:font-semibold">Transform Data</span>
+                    </a>
+                    <a href="#step-5" class="stepper-item group flex items-center p-3 rounded-md transition-colors duration-200 cursor-pointer">
+                        <span class="flex-shrink-0 w-8 h-8 rounded-full bg-slate-400 text-white flex items-center justify-center font-bold mr-4 group-[.active]:bg-indigo-600">5</span>
+                        <span class="font-medium group-[.active]:font-semibold">Analyze & Visualize</span>
+                    </a>
+                </nav>
+            </aside>
+
+            <!-- Content Panel -->
+            <main class="w-full md:w-3/4 bg-white p-6 rounded-lg shadow-lg">
+                <div id="pipeline-content">
+                    
+                    <div id="step-0" class="pipeline-step">
+                        <h2 class="text-2xl font-bold mb-4 text-slate-700">Step 0: Source Data in AWS S3 & Athena/Glue</h2>
+                        <p class="mb-6 text-slate-600">The entire pipeline originates from data stored in an AWS S3 bucket. AWS Glue catalogs this data, and AWS Athena is used to define and populate the initial Iceberg tables. This establishes the single source of truth for our Snowflake pipeline.</p>
+                        <div class="bg-slate-50 p-4 rounded-lg">
+                            <p class="font-semibold text-slate-700">Source: <span class="font-normal">AWS S3</span></p>
+                            <p class="font-semibold text-slate-700">Tools: <span class="font-normal">AWS Athena & Glue Data Catalog</span></p>
+                            <p class="font-semibold text-slate-700 mt-2">Tables Created:</p>
+                            <ul class="list-disc list-inside text-slate-600 grid grid-cols-2 gap-x-4">
+                                <li>manufacturers</li>
+                                <li>products</li>
+                                <li>inventory</li>
+                                <li>customers</li>
+                                <li>sales</li>
+                                <li>sales_line_items</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div id="step-1" class="pipeline-step hidden">
+                        <h2 class="text-2xl font-bold mb-4 text-slate-700">Step 1: Create Iceberg Tables in Snowflake</h2>
+                        <p class="mb-4 text-slate-600">This procedure creates Iceberg tables within Snowflake that directly reference the data in your S3 data lake. This makes the external data queryable without moving it.</p>
+                        <h3 class="font-semibold text-lg mb-2">Procedure: `create_iceberg_tables`</h3>
+                        <p class="mb-4 text-slate-600"><span class="font-semibold">Purpose:</span> Creates a set of Iceberg tables by referencing an external volume and data catalog.</p>
+                        <div class="code-block">
+                            <button class="copy-btn">Copy</button>
+                            <code class="language-sql">CALL create_iceberg_tables('LANDING_DATA', 'glueCatalog_extvol', 'glueCatalogInt');</code>
+                        </div>
+                    </div>
+
+                    <div id="step-2" class="pipeline-step hidden">
+                        <h2 class="text-2xl font-bold mb-4 text-slate-700">Step 2: Refresh Iceberg Tables</h2>
+                        <p class="mb-4 text-slate-600">As new data arrives in S3, the metadata in Snowflake must be updated. This procedure synchronizes Snowflake with the latest state of your Iceberg tables.</p>
+                        <h3 class="font-semibold text-lg mb-2">Procedure: `refresh_iceberg_tables`</h3>
+                        <p class="mb-4 text-slate-600"><span class="font-semibold">Purpose:</span> Updates the metadata for one or more Iceberg tables, ensuring Snowflake's query engine sees the latest data.</p>
+                        <div class="code-block">
+                            <button class="copy-btn">Copy</button>
+                            <code class="language-sql">CALL refresh_iceberg_tables('LANDING_DATA', 'products');</code>
+                        </div>
+                    </div>
+
+                    <div id="step-3" class="pipeline-step hidden">
+                        <h2 class="text-2xl font-bold mb-4 text-slate-700">Step 3: Load to Native Tables</h2>
+                        <p class="mb-4 text-slate-600">For optimal performance and to leverage all of Snowflake's features, data is loaded from the external Iceberg tables into Snowflake's native storage format.</p>
+                        <h3 class="font-semibold text-lg mb-2">Procedure: `load_iceberg_to_snowflake_native`</h3>
+                        <p class="mb-4 text-slate-600"><span class="font-semibold">Purpose:</span> Ingests data from specified Iceberg tables into a target schema of native Snowflake tables.</p>
+                        <div class="code-block">
+                            <button class="copy-btn">Copy</button>
+                            <code class="language-sql">CALL load_iceberg_to_snowflake_native('LANDING_DATA', 'RAW_DATA', 'ALL');</code>
+                        </div>
+                    </div>
+                    
+                    <div id="step-4" class="pipeline-step hidden">
+                        <h2 class="text-2xl font-bold mb-4 text-slate-700">Step 4: Transform Raw Data</h2>
+                        <p class="mb-4 text-slate-600">This procedure transforms the raw, loaded data into a structured dimensional model (star schema). It efficiently handles updates and new records to create clean, analysis-ready Dimension and Fact tables.</p>
+                        <h3 class="font-semibold text-lg mb-2">Procedure: `TRANSFORM_RAW_TO_DIM_FACT`</h3>
+                        <p class="mb-4 text-slate-600"><span class="font-semibold">Purpose:</span> Transforms data from the `RAW` schema into dimension and fact tables within a `TRANSFORM` schema.</p>
+                        <div class="code-block">
+                            <button class="copy-btn">Copy</button>
+                            <code class="language-sql">CALL common_sch.TRANSFORM_RAW_TO_DIM_FACT('RAW_DATA', 'TRANSFORM_DATA', 'ALL');</code>
+                        </div>
+                    </div>
+
+                    <div id="step-5" class="pipeline-step hidden">
+                        <h2 class="text-2xl font-bold mb-4 text-slate-700">Step 5: Analyze & Visualize</h2>
+                        <p class="mb-6 text-slate-600">With the data cleaned and modeled, we can now derive powerful business insights. Explore the different analytical queries and their visual representations below.</p>
+                        
+                        <div id="analysis-tabs" class="flex flex-wrap gap-2 mb-6">
+                            <button data-target="#viz1" class="analysis-tab px-4 py-2 text-sm font-medium rounded-full bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors duration-200 active">Sales by Country</button>
+                            <button data-target="#viz2" class="analysis-tab px-4 py-2 text-sm font-medium rounded-full bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors duration-200">Low Inventory</button>
+                            <button data-target="#viz3" class="analysis-tab px-4 py-2 text-sm font-medium rounded-full bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors duration-200">Monthly Sales Trend</button>
+                            <button data-target="#viz4" class="analysis-tab px-4 py-2 text-sm font-medium rounded-full bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors duration-200">Top 5 Customers</button>
+                            <button data-target="#viz5" class="analysis-tab px-4 py-2 text-sm font-medium rounded-full bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors duration-200">Sales by Category</button>
+                        </div>
+
+                        <div id="analysis-content">
+                            <div id="viz1" class="analysis-panel">
+                                <h3 class="text-xl font-semibold mb-2">Sales Performance by Manufacturer Country</h3>
+                                <p class="mb-4 text-slate-600">This chart aggregates total sales amounts by the country of the product manufacturer, providing a high-level view of geographical sales performance.</p>
+                                <div class="chart-container">
+                                    <canvas id="salesByCountryChart"></canvas>
+                                </div>
+                            </div>
+                            <div id="viz2" class="analysis-panel hidden">
+                                <h3 class="text-xl font-semibold mb-2">Products with Low Inventory Levels</h3>
+                                <p class="mb-4 text-slate-600">This table identifies products where the quantity on hand has fallen below the pre-defined low stock threshold, highlighting items that may need reordering.</p>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr>
+                                                <th class="py-2 px-4 border-b">Product Name</th>
+                                                <th class="py-2 px-4 border-b">Qty on Hand</th>
+                                                <th class="py-2 px-4 border-b">Threshold</th>
+                                                <th class="py-2 px-4 border-b">Warehouse</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="lowInventoryTable">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div id="viz3" class="analysis-panel hidden">
+                                <h3 class="text-xl font-semibold mb-2">Monthly Sales Trend</h3>
+                                <p class="mb-4 text-slate-600">This chart displays total monthly sales and overlays a 3-month moving average to smooth out fluctuations and identify the underlying sales trend.</p>
+                                <div class="chart-container">
+                                    <canvas id="monthlySalesChart"></canvas>
+                                </div>
+                            </div>
+                            <div id="viz4" class="analysis-panel hidden">
+                                 <h3 class="text-xl font-semibold mb-2">Top 5 Customers by Lifetime Spending</h3>
+                                <p class="mb-4 text-slate-600">This chart ranks the top five customers based on their total spending, helping to identify key accounts and high-value relationships.</p>
+                                <div class="chart-container">
+                                    <canvas id="topCustomersChart"></canvas>
+                                </div>
+                            </div>
+                            <div id="viz5" class="analysis-panel hidden">
+                                <h3 class="text-xl font-semibold mb-2">Total Sales by Product Category</h3>
+                                 <p class="mb-4 text-slate-600">This chart breaks down total sales revenue by product category, allowing for a clear comparison of performance across different segments of the business.</p>
+                                <div class="chart-container">
+                                    <canvas id="salesByCategoryChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const stepperLinks = document.querySelectorAll('#pipeline-stepper a');
+            const contentPanels = document.querySelectorAll('.pipeline-step');
+            
+            const analysisTabs = document.querySelectorAll('.analysis-tab');
+            const analysisPanels = document.querySelectorAll('.analysis-panel');
+
+            // Stepper navigation
+            stepperLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetId = link.getAttribute('href').substring(1);
+                    
+                    stepperLinks.forEach(l => l.classList.remove('active'));
+                    link.classList.add('active');
+                    
+                    contentPanels.forEach(panel => {
+                        panel.classList.add('hidden');
+                    });
+                    
+                    const targetPanel = document.getElementById(targetId);
+                    if (targetPanel) {
+                        targetPanel.classList.remove('hidden');
+                    }
+                });
+            });
+
+            // Analysis tabs navigation
+            analysisTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const targetId = tab.dataset.target.substring(1);
+
+                    analysisTabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+
+                    analysisPanels.forEach(panel => {
+                        panel.classList.add('hidden');
+                    });
+
+                    const targetPanel = document.getElementById(targetId);
+                    if (targetPanel) {
+                        targetPanel.classList.remove('hidden');
+                    }
+                });
+            });
+
+            // Copy to clipboard
+            document.querySelectorAll('.copy-btn').forEach(button => {
+                button.addEventListener('click', () => {
+                    const code = button.nextElementSibling.innerText;
+                    navigator.clipboard.writeText(code).then(() => {
+                        button.innerText = 'Copied!';
+                        setTimeout(() => {
+                            button.innerText = 'Copy';
+                        }, 2000);
+                    });
+                });
+            });
+
+            // --- Chart Data & Initialization ---
+
+            // Mock data derived from the source SQL
+            const salesByCountryData = {
+                labels: ['USA', 'Germany', 'Japan', 'UK', 'Canada'],
+                datasets: [{
+                    label: 'Total Sales',
+                    data: [11024, 6599, 4530, 3105, 2500],
+                    backgroundColor: 'rgba(79, 70, 229, 0.7)',
+                    borderColor: 'rgba(79, 70, 229, 1)',
+                    borderWidth: 1
+                }]
+            };
+
+            const lowInventoryData = [
+                { name: 'Hospital Bed Adjustable', qty: 35, threshold: 10, warehouse: 'Warehouse C' },
+                { name: 'Wheelchair Transport', qty: 75, threshold: 25, warehouse: 'Warehouse A' },
+                { name: 'Medical Face Shields (25pk)', qty: 95, threshold: 50, warehouse: 'Warehouse B' }
+            ];
+
+            const monthlySalesData = {
+                labels: ['Aug 2023', 'Sep 2023', 'Oct 2023'],
+                datasets: [
+                    {
+                        label: 'Total Monthly Sales',
+                        data: [22500, 28000, 34233],
+                        borderColor: 'rgba(79, 70, 229, 1)',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    },
+                    {
+                        label: '3-Month Moving Average',
+                        data: [null, null, 28244],
+                        borderColor: 'rgba(234, 88, 12, 1)',
+                        backgroundColor: 'transparent',
+                        borderDash: [5, 5],
+                        tension: 0.3
+                    }
+                ]
+            };
+
+            const topCustomersData = {
+                labels: ['City General Hospital', 'Regional Medical Center', 'Global Medical Distributors', 'Neighborhood Drugstore', 'MedFirst Partners'],
+                datasets: [{
+                    label: 'Total Spending',
+                    data: [4424.65, 6802.20, 4765.20, 4231.45, 3456.75],
+                    backgroundColor: 'rgba(14, 165, 233, 0.7)',
+                    borderColor: 'rgba(14, 165, 233, 1)',
+                    borderWidth: 1
+                }]
+            };
+
+            const salesByCategoryData = {
+                labels: ['2023'],
+                datasets: [
+                    {
+                        label: 'PPE',
+                        data: [8591],
+                        backgroundColor: 'rgba(79, 70, 229, 0.7)',
+                    },
+                    {
+                        label: 'Monitoring',
+                        data: [2597],
+                        backgroundColor: 'rgba(14, 165, 233, 0.7)',
+                    },
+                     {
+                        label: 'Disposables',
+                        data: [872],
+                        backgroundColor: 'rgba(234, 88, 12, 0.7)',
+                    },
+                    {
+                        label: 'Therapy',
+                        data: [1799],
+                        backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                    }
+                ]
+            };
+
+            // Chart initializations
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: { 
+                    y: { beginAtZero: true, grid: { color: '#e5e7eb' } },
+                    x: { grid: { display: false } }
+                }
+            };
+            
+            new Chart(document.getElementById('salesByCountryChart'), {
+                type: 'bar',
+                data: salesByCountryData,
+                options: chartOptions
+            });
+
+            const inventoryTableBody = document.getElementById('lowInventoryTable');
+            lowInventoryData.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="py-2 px-4 border-b">${item.name}</td>
+                    <td class="py-2 px-4 border-b"><span class="font-bold text-red-600">${item.qty}</span></td>
+                    <td class="py-2 px-4 border-b">${item.threshold}</td>
+                    <td class="py-2 px-4 border-b">${item.warehouse}</td>
+                `;
+                inventoryTableBody.appendChild(row);
+            });
+            
+            new Chart(document.getElementById('monthlySalesChart'), {
+                type: 'line',
+                data: monthlySalesData,
+                options: chartOptions
+            });
+
+            new Chart(document.getElementById('topCustomersChart'), {
+                type: 'bar',
+                data: topCustomersData,
+                options: { ...chartOptions, indexAxis: 'y' }
+            });
+
+            new Chart(document.getElementById('salesByCategoryChart'), {
+                type: 'bar',
+                data: salesByCategoryData,
+                options: chartOptions
+            });
+        });
+    </script>
+</body>
+</html>
