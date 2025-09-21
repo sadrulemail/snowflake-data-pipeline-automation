@@ -47,7 +47,7 @@ Top 5 Customers: A bar chart that ranks the top five customers based on their to
 
 Sales by Product Category: A bar chart that breaks down total sales revenue by product category, allowing for a clear comparison of performance across different segments of the business.
 
-**Features**
+**Features** - https://sadrulemail.github.io/snowflake-data-pipeline-automation/snowflake_pipeline_dashboard.html
 
 Interactive Stepper: A clear, sequential navigation menu that guides users through each step of the pipeline.
 
