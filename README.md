@@ -1,10 +1,13 @@
 Snowflake Data Pipeline Automation
+
 This repository contains an interactive web application that serves as a guide to building and automating a data pipeline using Snowflake, AWS S3, and Apache Iceberg. The application visualizes the step-by-step process, from sourcing raw data to transforming it and generating business insights.
 
 Project Overview
+
 The core purpose of this project is to demonstrate an end-to-end data pipeline solution. It begins with raw data in an AWS S3 data lake, leverages Iceberg tables for a flexible schema, and performs transformations within Snowflake to create a clean, dimensional data model. The final stage presents business intelligence queries with visualizations.
 
 Core Technologies
+
 Snowflake: The primary cloud data platform for data loading, storage, transformation, and analysis.
 
 AWS S3: The cloud storage service used as the data lake and a source for external tables.
